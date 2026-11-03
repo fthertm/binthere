@@ -1,0 +1,299 @@
+/* binthere — a classic pastebin look: dark navbar, option toolbar, big
+   monospace editor, plain blue primary button.
+
+   CSP-strict: external stylesheet only, no inline styles, no web fonts
+   (system font stacks only).
+   Theming: light values live on the root element; the dark class on <html>
+   re-binds the same slots. /js/theme-init.js applies the saved (or system)
+   preference before paint. Every rule reads through the tokens. */
+
+/* ── tokens — light ──────────────────────────────────────────────────────── */
+:root {
+  --paper: #ffffff;          /* page background, editor */
+  --sheet: #f8f9fa;          /* panels: toolbar, cards, code blocks, modal */
+  --sheet-2: #e9ecef;        /* raised: hover fills, inline code */
+  --rule: #dee2e6;           /* hairline border */
+  --rule-2: #ced4da;         /* input border */
+  --rule-3: #adb5bd;         /* emphasized border */
+  --ink: #212529;            /* primary text */
+  --ink-2: #495057;          /* secondary text */
+  --ink-3: #5c636a;          /* tertiary: meta, placeholders (>= 4.5:1 on every surface) */
+
+  --nav: #212529;            /* navbar background */
+  --nav-ink: #f8f9fa;        /* navbar text */
+
+  --accent: #0a58ca;         /* links, highlights */
+  --accent-fill: #0d6efd;    /* primary action fill */
+  --accent-fill-hover: #0b5ed7;
+  --accent-fill-active: #0a58ca;
+  --accent-fg: #ffffff;      /* label on the fill */
+  --ring: #0d6efd;           /* focus ring */
+
+  --danger: #b02a37;
+  --ok: #146c43;
+  --warn: #7a5200;
+  --ok-bg: #d1e7dd;
+  --ok-bd: #badbcc;
+  --ok-ink: #0f5132;
+
+  --shadow-overlay: 0 .5rem 1.5rem rgba(0, 0, 0, .22);
+
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  color-scheme: light;
+}
+
+/* ── tokens — dark ───────────────────────────────────────────────────────── */
+html.dark {
+  --paper: #16181b;
+  --sheet: #1e2125;
+  --sheet-2: #2a2e33;
+  --rule: #343a40;
+  --rule-2: #495057;
+  --rule-3: #6c757d;
+  --ink: #e9ecef;
+  --ink-2: #ced4da;
+  --ink-3: #a6adb4;
+
+  --nav: #0f1113;
+  --nav-ink: #f8f9fa;
+
+  --accent: #6ea8fe;
+  --accent-fill: #0d6efd;
+  --accent-fill-hover: #3d8bfd;
+  --accent-fill-active: #0a58ca;
+  --accent-fg: #ffffff;
+  --ring: #6ea8fe;
+
+  --danger: #ea868f;
+  --ok: #75b798;
+  --warn: #ffda6a;
+  --ok-bg: #0f2b1e;
+  --ok-bd: #1b4d36;
+  --ok-ink: #75b798;
+
+  --shadow-overlay: 0 .5rem 1.5rem rgba(0, 0, 0, .6);
+  color-scheme: dark;
+}
+
+/* ── base ────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { background: var(--paper); color: var(--ink); font-size: 16px; }
+body { font-family: var(--sans); font-size: .9375rem; line-height: 1.55; background: var(--paper); color: var(--ink);
+  min-height: 100vh; display: flex; flex-direction: column; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+/* View sections are programmatic focus targets only (showView moves focus to
+   them for keyboard/SR continuity); a ring around a whole view is noise. */
+.wrap > section:focus, .wrap > section:focus-visible { outline: none; }
+::selection { background: var(--accent-fill); color: var(--accent-fg); }
+.mono { font-family: var(--mono); }
+[hidden] { display: none !important; }
+
+.noscript { padding: .75rem 1rem; text-align: center; background: var(--danger); color: #fff; font-weight: 500; }
+
+.wrap { width: 100%; max-width: 960px; margin: 0 auto; padding: 1.5rem 1rem 2rem; flex: 1; }
+
+/* ── navbar ──────────────────────────────────────────────────────────────── */
+.navbar { background: var(--nav); color: var(--nav-ink); }
+.navbar-in { max-width: 960px; margin: 0 auto; padding: .6rem 1rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.brand { display: inline-flex; align-items: center; gap: .5rem; color: var(--nav-ink); font-size: 1.2rem; font-weight: 600; letter-spacing: .01em; }
+.brand:hover { color: #fff; text-decoration: none; }
+.brand-ico { width: 20px; height: 20px; flex: none; }
+.navbar-right { display: inline-flex; align-items: center; gap: .5rem; }
+.nav-btn { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-height: 34px; padding: .3rem .8rem;
+  font: inherit; font-size: .875rem; color: var(--nav-ink); background: transparent; border: 1px solid rgba(255, 255, 255, .3);
+  border-radius: .375rem; cursor: pointer; transition: background-color .12s ease, border-color .12s ease; }
+.nav-btn:hover { background: rgba(255, 255, 255, .14); border-color: rgba(255, 255, 255, .5); color: #fff; text-decoration: none; }
+.theme-toggle { width: 34px; padding: 0; }
+.theme-toggle svg { width: 16px; height: 16px; }
+.theme-toggle .ico-moon { display: none; }
+html.dark .theme-toggle .ico-sun { display: none; }
+html.dark .theme-toggle .ico-moon { display: block; }
+
+/* ── page head ───────────────────────────────────────────────────────────── */
+.page-head { margin: .5rem 0 1.25rem; }
+.title { font-size: 2.25rem; font-weight: 500; line-height: 1.15; }
+.title-sm { font-size: 1.6rem; }
+.subtitle { font-size: 1.15rem; font-weight: 400; color: var(--ink-2); margin-top: .25rem; }
+.lead { color: var(--ink-2); margin-top: .75rem; max-width: 70ch; }
+
+/* ── option toolbar + editor ─────────────────────────────────────────────── */
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem 1rem;
+  padding: .6rem .75rem; background: var(--sheet); border: 1px solid var(--rule); border-bottom: 0; border-radius: .375rem .375rem 0 0; }
+.toolbar-opts { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1.1rem; }
+.opt { display: inline-flex; align-items: center; gap: .45rem; font-size: .875rem; color: var(--ink-2); }
+.opt-label { font-weight: 500; }
+.opt-check { cursor: pointer; }
+.opt-check input { width: 1rem; height: 1rem; accent-color: var(--accent-fill); cursor: pointer; }
+.select { font: inherit; font-size: .875rem; padding: .3rem 1.6rem .3rem .55rem; color: var(--ink); background: var(--sheet-2);
+  border: 1px solid var(--rule-2); border-radius: .375rem; cursor: pointer; }
+.select:hover { border-color: var(--rule-3); }
+
+.editor { display: block; width: 100%; min-height: 55vh; resize: vertical; background: var(--paper); color: var(--ink);
+  border: 1px solid var(--rule); border-radius: 0 0 .375rem .375rem; padding: .85rem 1rem;
+  font-family: var(--mono); font-size: .875rem; line-height: 1.6; tab-size: 2;
+  transition: border-color .12s ease, box-shadow .12s ease; }
+.editor::placeholder { color: var(--ink-3); }
+.editor:focus { outline: none; border-color: var(--ring); box-shadow: 0 0 0 .2rem rgba(13, 110, 253, .25); }
+/* iOS Safari zooms into any focused control below 16px. */
+@media (max-width: 768px) { .editor, .input { font-size: 1rem; } }
+
+/* ── buttons ─────────────────────────────────────────────────────────────── */
+.send, .cta { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: 38px; padding: .45rem 1.25rem;
+  font: inherit; font-size: .9375rem; font-weight: 500; color: var(--accent-fg); background: var(--accent-fill);
+  border: 1px solid var(--accent-fill); border-radius: .375rem; cursor: pointer;
+  transition: background-color .12s ease, border-color .12s ease, opacity .15s ease; }
+.send:hover, .cta:hover { background: var(--accent-fill-hover); border-color: var(--accent-fill-hover); }
+.send:active, .cta:active { background: var(--accent-fill-active); border-color: var(--accent-fill-active); }
+.send:disabled, .cta:disabled { opacity: .55; cursor: not-allowed; }
+.send.sending { opacity: .75; }
+.cta { width: 100%; }
+.cta-inline { width: auto; padding: .55rem 1.5rem; }
+.cta-inline:hover { color: var(--accent-fg); text-decoration: none; }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; min-height: 38px; padding: .45rem 1rem;
+  font: inherit; font-size: .875rem; font-weight: 500; color: var(--ink); background: var(--paper);
+  border: 1px solid var(--rule-2); border-radius: .375rem; cursor: pointer;
+  transition: color .12s ease, border-color .12s ease, background-color .12s ease; }
+.btn:hover { background: var(--sheet-2); border-color: var(--rule-3); text-decoration: none; }
+.btn:disabled { opacity: .55; cursor: not-allowed; background: var(--paper); }
+.btn.danger { color: var(--danger); }
+.btn.danger:hover { border-color: var(--danger); }
+/* Armed = first press of a two-step irreversible action (see armConfirm in
+   app.js): the label now names the destructive effect, so paint it red. */
+.btn.armed { color: #fff; background: var(--danger); border-color: var(--danger); }
+html.dark .btn.armed { color: #16181b; }
+
+.btn-row { display: flex; flex-wrap: wrap; gap: .6rem; }
+.btn-row.center { justify-content: center; }
+.btn-end { margin-left: auto; }
+@media (max-width: 480px) { .btn-end { margin-left: 0; } }
+
+/* Password toggle in the toolbar — pressed state fills with the accent. */
+.lock { display: inline-flex; align-items: center; gap: .4rem; min-height: 32px; padding: .25rem .7rem; font: inherit; font-size: .875rem;
+  color: var(--ink-2); background: var(--paper); border: 1px solid var(--rule-2); border-radius: .375rem; cursor: pointer;
+  transition: color .12s ease, border-color .12s ease, background-color .12s ease; }
+.lock:hover { color: var(--ink); background: var(--sheet-2); }
+.lock .lock-ico { width: 15px; height: 15px; }
+.lock.active, .lock.active:hover { color: var(--accent-fg); background: var(--accent-fill); border-color: var(--accent-fill); }
+
+/* ── inputs ──────────────────────────────────────────────────────────────── */
+.input { font-family: var(--mono); font-size: .875rem; padding: .5rem .7rem; color: var(--ink); background: var(--paper);
+  border: 1px solid var(--rule-2); border-radius: .375rem; transition: border-color .12s ease, box-shadow .12s ease; }
+.input::placeholder { color: var(--ink-3); }
+.input:focus-visible { outline: none; border-color: var(--ring); box-shadow: 0 0 0 .2rem rgba(13, 110, 253, .25); }
+
+.pw { display: inline-flex; align-items: stretch; }
+.pw .input { border-top-right-radius: 0; border-bottom-right-radius: 0; min-width: 200px; }
+.pw-wide { display: flex; width: 100%; }
+.pw-wide .input { flex: 1; min-width: 0; }
+.peek { display: inline-grid; place-items: center; padding: 0 .65rem; color: var(--ink-3); background: var(--sheet);
+  border: 1px solid var(--rule-2); border-left: none; border-radius: 0 .375rem .375rem 0; cursor: pointer; }
+.peek:hover { color: var(--ink); background: var(--sheet-2); }
+.peek svg { width: 16px; height: 16px; }
+/* Masked (default) shows the plain eye; revealed swaps to the struck-through one. */
+.peek .ico-eye-off { display: none; }
+.peek.revealed .ico-eye { display: none; }
+.peek.revealed .ico-eye-off { display: block; }
+
+/* ── modal (password) ────────────────────────────────────────────────────── */
+.modal-scrim { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 1.5rem;
+  background: rgba(0, 0, 0, .55); }
+.modal:focus { outline: none; }
+.modal { width: 100%; max-width: 420px; padding: 1.5rem; background: var(--paper); border: 1px solid var(--rule-2);
+  border-radius: .5rem; box-shadow: var(--shadow-overlay); }
+.modal-title { font-size: 1.25rem; font-weight: 500; }
+.modal-sub { font-size: .875rem; color: var(--ink-2); margin-top: .35rem; }
+.modal-pw { display: flex; align-items: stretch; margin: 1.1rem 0 .25rem; }
+.modal-pw + .modal-pw { margin-top: .5rem; }
+.modal-pw .input { flex: 1; min-width: 0; }
+.modal-msg { padding: .5rem 0 0; text-align: left; }
+.modal-actions { display: flex; align-items: center; justify-content: flex-end; gap: .6rem; margin-top: 1.15rem; }
+
+/* ── success ─────────────────────────────────────────────────────────────── */
+.alert { padding: .9rem 1.1rem; border: 1px solid var(--rule); border-radius: .375rem; margin-bottom: 1rem; }
+.alert-success { color: var(--ok-ink); background: var(--ok-bg); border-color: var(--ok-bd); }
+.alert-title { font-size: 1.15rem; font-weight: 600; margin-bottom: .25rem; }
+.stack { display: flex; flex-direction: column; gap: 1rem; }
+.narrow { max-width: 460px; }
+
+.linkrow { display: flex; align-items: center; gap: .6rem; padding: .6rem .75rem; background: var(--sheet); border: 1px solid var(--rule-2); border-radius: .375rem; }
+.linkrow .url { flex: 1; min-width: 0; font-size: .8125rem; color: var(--ink-2); overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
+.linkrow .url::-webkit-scrollbar { display: none; }
+.copy-btn { font: inherit; font-size: .8125rem; font-weight: 500; line-height: 1; white-space: nowrap; padding: .5rem .8rem; color: var(--ink);
+  background: var(--paper); border: 1px solid var(--rule-2); border-radius: .375rem; cursor: pointer;
+  transition: color .12s ease, background-color .12s ease, border-color .12s ease; }
+.copy-btn:hover { background: var(--sheet-2); border-color: var(--rule-3); }
+.copy-btn:active, .copy-btn.copied { color: var(--accent-fg); background: var(--accent-fill); border-color: var(--accent-fill); }
+.copy-btn:disabled { opacity: .55; cursor: not-allowed; }
+
+.card { padding: 1rem; background: var(--sheet); border: 1px solid var(--rule); border-radius: .375rem; }
+.qr { display: flex; justify-content: center; }
+.qr img { width: 176px; height: 176px; image-rendering: pixelated; background: #fff; border-radius: .25rem; padding: 8px; }
+
+/* ── badges ──────────────────────────────────────────────────────────────── */
+.pills { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-bottom: .85rem; }
+.pill { display: inline-flex; align-items: center; padding: .25rem .6rem; font-size: .75rem; font-weight: 600; color: var(--ink-2);
+  background: var(--sheet-2); border: 1px solid var(--rule-2); border-radius: .375rem; }
+.pill.ok { color: var(--ok); border-color: var(--ok); }
+.pill.warn { color: var(--warn); border-color: var(--warn); }
+.pill.bad { color: var(--danger); border-color: var(--danger); }
+
+/* ── paste content ───────────────────────────────────────────────────────── */
+.code { font-family: var(--mono); font-size: .875rem; line-height: 1.6; color: var(--ink); background: var(--sheet);
+  border: 1px solid var(--rule); border-radius: .375rem; padding: 1rem; overflow-x: auto; white-space: pre-wrap; word-break: break-word; tab-size: 2; }
+.md { background: var(--paper); border: 1px solid var(--rule); border-radius: .375rem; padding: 1.1rem 1.3rem; color: var(--ink); }
+.md h1, .md h2, .md h3, .md h4 { font-weight: 600; margin: 1.1rem 0 .5rem; line-height: 1.25; }
+.md h1 { font-size: 1.6rem; } .md h2 { font-size: 1.35rem; } .md h3 { font-size: 1.15rem; }
+.md p { margin: .6rem 0; } .md ul, .md ol { margin: .6rem 0 .6rem 1.4rem; } .md li { margin: .2rem 0; }
+.md code { font-family: var(--mono); font-size: .85em; background: var(--sheet-2); border-radius: .25rem; padding: .1em .35em; }
+.md pre { background: var(--sheet); border: 1px solid var(--rule); border-radius: .375rem; padding: .85rem 1rem; overflow-x: auto; margin: .7rem 0; }
+.md pre code { background: none; padding: 0; }
+.md blockquote { border-left: 3px solid var(--rule-3); padding-left: .9rem; color: var(--ink-2); margin: .7rem 0; }
+.md hr { border: none; border-top: 1px solid var(--rule); margin: 1.1rem 0; }
+.md a { text-decoration: underline; text-underline-offset: 2px; }
+
+/* ── status / expired panel ──────────────────────────────────────────────── */
+.status-panel { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem;
+  min-height: 50vh; text-align: center; padding: 2rem 0; }
+.status-ico { width: 44px; height: 44px; color: var(--ink-3); }
+.status-panel .msg { padding: 0; color: var(--ink-2); font-size: 1rem; }
+.status-panel .msg.error { color: var(--ink-2); }
+
+.status-timer { display: inline-flex; align-items: baseline; gap: .7rem; padding: .6rem 1rem; margin-top: .25rem;
+  border: 1px solid var(--danger); border-radius: .375rem; background: var(--sheet); }
+.status-timer-label { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); }
+.status-timer-clock { font-size: .9rem; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--danger); }
+.status-timer.ending .status-timer-clock { animation: timerPulse 1s ease-in-out infinite; }
+@keyframes timerPulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+
+/* ── messages / toast / footer ───────────────────────────────────────────── */
+.msg { font-size: .875rem; color: var(--ink-2); padding: 1rem 0; text-align: center; }
+.msg.error { color: var(--danger); }
+#toast { position: fixed; left: 50%; bottom: 2rem; z-index: 70; transform: translateX(-50%) translateY(12px);
+  background: var(--nav); color: var(--nav-ink); font-size: .8125rem; padding: .6rem 1rem; border-radius: .375rem;
+  max-width: 90vw; text-align: center; box-shadow: var(--shadow-overlay);
+  opacity: 0; pointer-events: none; transition: opacity .25s ease, transform .25s ease; }
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+.foot { padding: 1.25rem 1rem 1.5rem; text-align: center; color: var(--ink-3); font-size: .8125rem; background: var(--sheet); border-top: 1px solid var(--rule); }
+.foot-about { max-width: 640px; margin: 0 auto .6rem; }
+.foot-credit { color: var(--ink-2); }
+.foot-credit a { font-weight: 600; }
+.heart { color: #dc3545; }
+
+/* the create → success hand-off: the composer fades out (see leaveCreateView
+   in app.js; VIEW_EXIT_MS there mirrors this duration). */
+@keyframes viewOut { to { opacity: 0; } }
+.view-leaving { animation: viewOut .17s ease forwards; pointer-events: none; }
+
+/* ── utilities ───────────────────────────────────────────────────────────── */
+.mt1 { margin-top: 1rem; }
+/* Offscreen staging for the legacy execCommand('copy') clipboard fallback. */
+.clipboard-stage { position: fixed; opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

@@ -1,0 +1,7 @@
+* [33mf166f6e[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m Clean-up mess
+[31m|[m * [33mcab6f0d[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Add expiry and burn options to paste creation
+[31m|[m * [33m7b23ea5[m Update expiry options and enable burn after reading
+[31m|[m * [33m03abccb[m Edit ui
+[31m|[m[31m/[m  
+* [33m6d33d39[m Add files
+* [33m1bc9cce[m Initial commit

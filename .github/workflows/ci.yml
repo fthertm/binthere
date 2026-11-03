@@ -1,0 +1,30 @@
+# CI — runs the full vitest suite (crypto vectors, format, ids, markdown XSS,
+# burn concurrency) in the real workerd runtime via
+# @cloudflare/vitest-pool-workers, then the DOM-mount suites (happy-dom).
+# Runs on every push to main and on every PR.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      # Confirm the pinned crypto vectors still reproduce byte-for-byte (SPEC.md §11):
+      # regenerate and diff against the committed test/vectors.expected.txt.
+      - run: node test/genvectors.mjs | diff -u test/vectors.expected.txt -
+      # Workerd suite runs WITH coverage so the configured thresholds
+      # (80% statements / 70% branches) are enforced; then the DOM project.
+      - run: npm run test:coverage
+      - run: npm run test:dom
