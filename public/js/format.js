@@ -3,7 +3,7 @@
 // the frozen wire/storage format (SPEC.md §4, §5). Shared by the browser client
 // (validates on read) and the Worker (validates on create).
 
-import { bytesFromB64url } from './bytes.js';
+import { bytesFromB64url, isCanonicalB64url } from './bytes.js';
 
 export const FORMAT_VERSION = 1;
 
@@ -165,7 +165,7 @@ export function validatePaste(input) {
   if (typeof input.ct !== 'string' || input.ct.length === 0 || input.ct.length > MAX_CT_B64) {
     throw new FormatError('invalid ct');
   }
-  b64urlByteLength(input.ct, 'ct');
+  if (!isCanonicalB64url(input.ct)) throw new FormatError('invalid base64url in ct');
   validateWk(input.wk);
 
   return {

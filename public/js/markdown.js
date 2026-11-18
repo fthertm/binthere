@@ -24,6 +24,10 @@ export function sanitizeUrl(raw) {
 
 // ── inline parsing (code → links → emphasis) ─────────────────────────────────
 
+function pushAll(target, items) {
+  for (const item of items) target.push(item);
+}
+
 function parseEmphasis(str) {
   const nodes = [];
   const re = /(\*\*|__)(.+?)\1|(\*|_)(.+?)\3/g;
@@ -40,18 +44,18 @@ function parseEmphasis(str) {
 
 function parseLinks(str) {
   const nodes = [];
-  const re = /\[([^\]]*)\]\(([^)\s]*)\)/g;
+  const re = /\[([^\]]{0,300})\]\(([^)\s]{0,2048})\)/g;
   let m, last = 0;
   while ((m = re.exec(str))) {
-    if (m.index > last) nodes.push(...parseEmphasis(str.slice(last, m.index)));
+    if (m.index > last) pushAll(nodes, parseEmphasis(str.slice(last, m.index)));
     const href = sanitizeUrl(m[2]);
     const children = parseEmphasis(m[1]);
     // Unsafe/absent URL → drop the link, keep its text. Never emit a bad href.
     if (href) nodes.push({ type: 'link', href, children });
-    else nodes.push(...children);
+    else pushAll(nodes, children);
     last = re.lastIndex;
   }
-  if (last < str.length) nodes.push(...parseEmphasis(str.slice(last)));
+  if (last < str.length) pushAll(nodes, parseEmphasis(str.slice(last)));
   return nodes;
 }
 
@@ -60,11 +64,11 @@ function parseInline(str) {
   const re = /`([^`]+)`/g;
   let m, last = 0;
   while ((m = re.exec(str))) {
-    if (m.index > last) nodes.push(...parseLinks(str.slice(last, m.index)));
+    if (m.index > last) pushAll(nodes, parseLinks(str.slice(last, m.index)));
     nodes.push({ type: 'code', value: m[1] });
     last = re.lastIndex;
   }
-  if (last < str.length) nodes.push(...parseLinks(str.slice(last)));
+  if (last < str.length) pushAll(nodes, parseLinks(str.slice(last)));
   return nodes;
 }
 

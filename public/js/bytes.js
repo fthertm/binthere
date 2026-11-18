@@ -46,24 +46,25 @@ export function b64urlFromBytes(bytes) {
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
+export function isCanonicalB64url(str) {
+  if (typeof str !== 'string' || !_B64URL_RE.test(str) || str.length % 4 === 1) return false;
+  // Canonical form only (SPEC §3): the unused low bits of the final character
+  // must be zero, otherwise distinct strings alias to the same bytes ("Zg" and
+  // "Zh" would both decode to 0x66) — ids, tokens, and fragments must have
+  // exactly one valid encoding. RFC 4648 §3.5.
+  const rem = str.length % 4;
+  if (rem === 0) return true;
+  const v = _B64URL_ALPHABET.indexOf(str[str.length - 1]);
+  return (v & (rem === 2 ? 0b1111 : 0b11)) === 0;
+}
+
 /**
  * Decode unpadded URL-safe base64 to bytes. Strict: rejects any character
  * outside the base64url alphabet, structurally-impossible lengths, and
  * non-canonical encodings. Throws on malformed input so callers fail closed.
  */
 export function bytesFromB64url(str) {
-  if (typeof str !== 'string' || !_B64URL_RE.test(str) || str.length % 4 === 1) {
-    throw new Error('invalid base64url');
-  }
-  // Canonical form only (SPEC §3): the unused low bits of the final character
-  // must be zero, otherwise distinct strings alias to the same bytes ("Zg" and
-  // "Zh" would both decode to 0x66) — ids, tokens, and fragments must have
-  // exactly one valid encoding. RFC 4648 §3.5.
-  const rem = str.length % 4;
-  if (rem !== 0) {
-    const v = _B64URL_ALPHABET.indexOf(str[str.length - 1]);
-    if ((v & (rem === 2 ? 0b1111 : 0b11)) !== 0) throw new Error('invalid base64url');
-  }
+  if (!isCanonicalB64url(str)) throw new Error('invalid base64url');
   const b64 = str.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((str.length + 3) % 4);
   let bin;
   try {

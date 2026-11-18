@@ -233,7 +233,9 @@ function showSuccess({ id, deletetoken, url, isBurn, expire }) {
     delBtn.textContent = 'Deleting…';
     try {
       await deletePaste(id, deletetoken);
-      showMsg(sMsg, 'This paste has been deleted.');
+      showMsg(sMsg, isBurn
+        ? 'This paste has been deleted.'
+        : 'This paste has been deleted. Other regions may keep serving it for a minute or more.');
       toast('deleted');
       delBtn.textContent = 'Deleted';
       // The link is dead now — don't leave live-looking actions pointing at it.
@@ -334,13 +336,7 @@ async function initBurnView(id, fragment) {
     status('This note can only be viewed once.', false, { reveal: true });
     const revealBtn = $('#reveal-burn');
     revealBtn.disabled = false;
-    // When the countdown hits zero the note is gone server-side — leaving an
-    // enabled Reveal pointing at a doomed 410 would be a lie. Transition to the
-    // expired state immediately (status() also stops and hides the timer).
-    startExpiryTimer(head.meta, () => {
-      revealBtn.disabled = true;
-      status('This note has expired — it can no longer be opened.', true);
-    });
+    startExpiryTimer(head.meta);
     revealBtn.onclick = async () => {
       revealBtn.disabled = true;
       $('#status-actions').hidden = true;
@@ -464,6 +460,8 @@ function handleReadError(e) {
     status('Could not reach the server — check your connection and try again.', true);
   } else if (e.status === 410) {
     status('This paste has expired or was already opened.', true);
+  } else if (e.status === 429) {
+    status('Too many requests — wait a minute and try again. The note has not been opened.', true);
   } else {
     status('This paste has expired, was already opened, or never existed.', true);
   }
@@ -628,9 +626,8 @@ function stopExpiryTimer() {
 
 // `meta.created` (unix seconds) is set by the server on create and echoed in the
 // peek response; `expire` maps to a fixed TTL. A note with no expiry (never) or
-// missing created gets no timer rather than a bogus one. `onExpire` fires once
-// when the countdown reaches zero (possibly synchronously, if already past).
-function startExpiryTimer(meta, onExpire) {
+// missing created gets no timer rather than a bogus one.
+function startExpiryTimer(meta) {
   const box = $('#status-timer');
   const clock = $('#status-timer-clock');
   if (!box || !clock || !meta) return;
@@ -638,22 +635,16 @@ function startExpiryTimer(meta, onExpire) {
   if (ttl <= 0 || !Number.isInteger(meta.created)) return;
 
   const expireAt = (meta.created + ttl) * 1000;
-  let expired = false;
   const render = () => {
-    const left = Math.max(0, expireAt - Date.now());
+    const left = expireAt - Date.now();
+    if (left <= 0) { stopExpiryTimer(); return; }
     clock.textContent = formatDuration(left);
     // Pulse under ten minutes — a quiet "hurry" cue without shouting.
-    box.classList.toggle('ending', left > 0 && left <= 600000);
-    if (left <= 0) {
-      expired = true;
-      if (expiryTimer !== null) { clearInterval(expiryTimer); expiryTimer = null; }
-      box.classList.remove('ending');
-      if (onExpire) onExpire();
-    }
+    box.classList.toggle('ending', left <= 600000);
   };
   box.hidden = false;
   render();
-  if (!expired) expiryTimer = setInterval(render, 1000);
+  if (!box.hidden) expiryTimer = setInterval(render, 1000);
 }
 
 // ms → H:MM:SS (or MM:SS under an hour). Clamps at 0 (shows "expired").
@@ -678,6 +669,6 @@ function friendlyError(e) {
     if (e.status === 413) return 'That document is too large.';
     return e.message || 'Server error. Please try again.';
   }
-  if (e && /too large/.test(e.message || '')) return 'That document is too large (1 MiB max).';
+  if (e && /too large/.test(e.message || '')) return 'That document is too large (512 KiB max).';
   return 'Something went wrong. Please try again.';
 }

@@ -12,7 +12,8 @@ import { randomBytes, utf8, fromUtf8, b64urlFromBytes, bytesFromB64url } from '.
 import { buildAAD, validatePaste, ITER_V1 } from './format.js';
 
 const KDF_INFO = utf8('binthere/v1 kek');
-export const MAX_PLAINTEXT = 1 << 20; // 1 MiB — cap before compression and on decompression
+export const MAX_PLAINTEXT = 1 << 19; // 512 KiB — cap on new pastes, before compression
+export const MAX_DECOMPRESSED = 1 << 20;
 
 /** Raised when a paste needs a password the caller didn't supply. */
 export class PasswordRequired extends Error {
@@ -103,7 +104,7 @@ export async function gzip(bytes) {
  * Gunzip with a hard output cap (gzip-bomb defense): aborts as soon as the
  * cumulative decompressed size exceeds `maxOut`. Throws on malformed input.
  */
-export async function gunzip(bytes, maxOut = MAX_PLAINTEXT) {
+export async function gunzip(bytes, maxOut = MAX_DECOMPRESSED) {
   const stream = new DecompressionStream('gzip');
   const writer = stream.writable.getWriter();
   // Errors surface fail-closed through the reader loop below; catch the write/
@@ -244,7 +245,7 @@ export async function decryptContent({ adata, ct, cek }) {
     throw new DecryptError('invalid ciphertext');
   }
   const payload = await aesGcmDecrypt(cek, ivc, ctBytes, aad);
-  const plainBytes = adata.comp === 'gzip' ? await gunzip(payload, MAX_PLAINTEXT) : payload;
+  const plainBytes = adata.comp === 'gzip' ? await gunzip(payload, MAX_DECOMPRESSED) : payload;
   let text;
   try {
     text = fromUtf8(plainBytes);
